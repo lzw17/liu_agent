@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="#1e3a8a" stroke="#3b82f6" stroke-width="2"/>
+  
+  <!-- School building silhouette -->
+  <rect x="60" y="80" width="80" height="60" fill="#ffffff" opacity="0.9"/>
+  <rect x="70" y="70" width="60" height="10" fill="#ffffff"/>
+  <rect x="85" y="60" width="30" height="10" fill="#ffffff"/>
+  
+  <!-- Windows -->
+  <rect x="70" y="90" width="8" height="12" fill="#1e3a8a"/>
+  <rect x="82" y="90" width="8" height="12" fill="#1e3a8a"/>
+  <rect x="94" y="90" width="8" height="12" fill="#1e3a8a"/>
+  <rect x="106" y="90" width="8" height="12" fill="#1e3a8a"/>
+  <rect x="118" y="90" width="8" height="12" fill="#1e3a8a"/>
+  
+  <rect x="70" y="110" width="8" height="12" fill="#1e3a8a"/>
+  <rect x="82" y="110" width="8" height="12" fill="#1e3a8a"/>
+  <rect x="94" y="110" width="8" height="12" fill="#1e3a8a"/>
+  <rect x="106" y="110" width="8" height="12" fill="#1e3a8a"/>
+  <rect x="118" y="110" width="8" height="12" fill="#1e3a8a"/>
+  
+  <!-- Door -->
+  <rect x="92" y="125" width="16" height="15" fill="#1e3a8a"/>
+  
+  <!-- AI Brain symbol -->
+  <circle cx="100" cy="45" r="18" fill="#ffffff" opacity="0.9"/>
+  <path d="M88 40 Q100 30 112 40 Q108 50 100 48 Q92 50 88 40" fill="#3b82f6"/>
+  <circle cx="95" cy="42" r="2" fill="#1e3a8a"/>
+  <circle cx="105" cy="42" r="2" fill="#1e3a8a"/>
+  <path d="M95 48 Q100 52 105 48" stroke="#1e3a8a" stroke-width="1.5" fill="none"/>
+  
+  <!-- Circuit lines -->
+  <path d="M82 45 L88 45 M112 45 L118 45" stroke="#3b82f6" stroke-width="2"/>
+  <circle cx="82" cy="45" r="2" fill="#3b82f6"/>
+  <circle cx="118" cy="45" r="2" fill="#3b82f6"/>
+  
+  <!-- Text -->
+  <text x="100" y="170" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="14" font-weight="bold">武昌工学院</text>
+  <text x="100" y="185" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="10">LiuAgent</text>
+</svg>

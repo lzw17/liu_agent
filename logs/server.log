@@ -1,0 +1,9 @@
+nohup: ignoring input
+[32m2025-10-13 14:14:37[0m | [1mINFO    [0m | [36m__main__[0m:[36mmain[0m:[36m146[0m - [1mStarting LiuAgent server...[0m
+[32m2025-10-13 14:14:37[0m | [1mINFO    [0m | [36m__main__[0m:[36mmain[0m:[36m147[0m - [1mServer will run on 0.0.0.0:8000[0m
+INFO:     Started server process [3724188]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0', 8000): address already in use
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
