@@ -50,12 +50,14 @@ def create_app() -> FastAPI:
             from fastapi.responses import FileResponse
             return FileResponse("frontend/dist/logo.svg")
         
-        # Catch-all route for SPA
-        @app.get("/{full_path:path}", response_class=HTMLResponse)
-        async def serve_spa(full_path: str):
-            # Serve index.html for all routes to enable Vue router
-            from fastapi.responses import FileResponse
+        # SPA index for root and any subpath (support GET/HEAD)
+        from fastapi.responses import FileResponse
+
+        async def spa_index():
             return FileResponse("frontend/dist/index.html")
+
+        app.add_api_route("/", spa_index, methods=["GET", "HEAD"], response_class=HTMLResponse)
+        app.add_api_route("/{full_path:path}", spa_index, methods=["GET", "HEAD"], response_class=HTMLResponse)
     else:
         # Fallback HTML page if frontend not built
         @app.get("/", response_class=HTMLResponse)
