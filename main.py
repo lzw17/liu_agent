@@ -50,6 +50,11 @@ def create_app() -> FastAPI:
             from fastapi.responses import FileResponse
             return FileResponse("frontend/dist/logo.svg")
         
+        @app.get("/yuanqi.jpg")
+        async def yuanqi():
+            from fastapi.responses import FileResponse
+            return FileResponse("frontend/dist/yuanqi.jpg")
+        
         # SPA index for root and any subpath (support GET/HEAD)
         from fastapi.responses import FileResponse
 

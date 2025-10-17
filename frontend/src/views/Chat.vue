@@ -3,8 +3,8 @@
     <!-- Chat Header -->
     <div class="chat-header">
       <div class="header-left">
-        <h2>🤖 LiuAgent 智能助手</h2>
-        <span class="model-info">武昌工学院 AI 竞赛项目</span>
+        <h2>🤖 元启康健AI智能健康小助手</h2>
+        <span class="model-info">武昌工学院 AI 项目</span>
       </div>
       <div class="header-right">
         <el-space>
@@ -27,8 +27,8 @@
       <div v-if="messages.length === 0" class="welcome-message">
         <div class="welcome-content">
           <el-icon class="welcome-icon"><ChatDotRound /></el-icon>
-          <h3>欢迎使用 LiuAgent AI 助手</h3>
-          <p>我是武昌工学院的智能助手，具备多种工具能力，可以帮助您完成各种任务！</p>
+          <h3>你好！我是武昌工学院的元启康健AI智能健康小助手小元-，很高兴为你服务。请问有什么可以帮你的吗？</h3>
+          <p></p>
           <div class="capabilities-grid">
             <div class="capability-card" @click="quickMessage('请介绍你的功能和工具')">
               <el-icon><Tools /></el-icon>

@@ -2,15 +2,15 @@
   <div style="height: 100%; display: flex; flex-direction: column; background: white;">
     <!-- Header -->
     <div style="padding: 20px; border-bottom: 1px solid #eee; background: white;">
-      <h2 style="margin: 0; color: #333;">🤖 LiuAgent 智能助手</h2>
+      <h2 style="margin: 0; color: #333;">🤖 元启康健AI智能健康小助手</h2>
       <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">武昌工学院 AI 竞赛项目 | DeepSeek-V3 驱动</p>
     </div>
 
     <!-- Messages Area -->
     <div style="flex: 1; padding: 20px; background: #f5f5f5; overflow-y: auto;">
       <div v-if="messages.length === 0" style="text-align: center; padding: 50px;">
-        <h3 style="color: #666;">欢迎使用 LiuAgent AI 助手</h3>
-        <p style="color: #999;">我是武昌工学院的智能助手，可以帮助您完成各种任务！</p>
+        <h3 style="color: #666;">你好！我是武昌工学院的元启康健AI智能健康小助手小元-，很高兴为你服务。请问有什么可以帮你的吗？</h3>
+        <p style="color: #999;"></p>
         
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; max-width: 400px; margin: 30px auto;">
           <div @click="quickStart('请介绍你的功能')" style="padding: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 10px; cursor: pointer; text-align: center;">

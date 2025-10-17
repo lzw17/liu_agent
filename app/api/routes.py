@@ -1,7 +1,7 @@
 """API routes for LiuAgent."""
 import os
 import tempfile
-from typing import List, Optional
+from typing import List, Optional, Union
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -11,7 +11,13 @@ from ..models.schemas import (
     DocumentUploadResponse, KnowledgeBaseResponse, HealthResponse, ConfigResponse
 )
 from ..services import (
-    get_chat_service, get_knowledge_base_service, get_search_service, get_llm_service
+    get_chat_service, get_knowledge_base_service, get_search_service, get_llm_service,
+    get_health_assistant_service
+)
+from ..models.health_schemas import (
+    UserProfile, PlanItem, PlanCreate, CheckinRecord, CheckinCreate,
+    RecipeItem, RecipeCreate, TherapyItem, TherapyCreate,
+    MetricCreate, MetricRecord, ScoreRecord
 )
 
 router = APIRouter()
@@ -242,4 +248,201 @@ async def search_knowledge_base(request: SearchRequest):
         }
     except Exception as e:
         logger.error(f"Knowledge base search endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Health assistant endpoints
+@router.get("/health-assistant/profile", response_model=Optional[UserProfile])
+async def get_profile():
+    try:
+        svc = get_health_assistant_service()
+        return svc.get_profile()
+    except Exception as e:
+        logger.error(f"Get profile error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/health-assistant/profile", response_model=UserProfile)
+async def set_profile(profile: UserProfile):
+    try:
+        svc = get_health_assistant_service()
+        return svc.set_profile(profile)
+    except Exception as e:
+        logger.error(f"Set profile error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/health-assistant/plans", response_model=List[PlanItem])
+async def list_plans():
+    try:
+        svc = get_health_assistant_service()
+        return svc.list_plans()
+    except Exception as e:
+        logger.error(f"List plans error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/health-assistant/plans", response_model=PlanItem)
+async def add_plan(plan: PlanCreate):
+    try:
+        svc = get_health_assistant_service()
+        return svc.add_plan(plan.date, plan.title, plan.category, plan.done or False)
+    except Exception as e:
+        logger.error(f"Add plan error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/health-assistant/today-plan", response_model=List[PlanItem])
+async def list_today_plan():
+    try:
+        svc = get_health_assistant_service()
+        return svc.list_today_plan()
+    except Exception as e:
+        logger.error(f"List today plan error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/health-assistant/checkins", response_model=List[CheckinRecord])
+async def list_checkins():
+    try:
+        svc = get_health_assistant_service()
+        return svc.list_checkins()
+    except Exception as e:
+        logger.error(f"List checkins error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/health-assistant/checkins", response_model=CheckinRecord)
+async def add_checkin(record: CheckinCreate):
+    try:
+        svc = get_health_assistant_service()
+        return svc.add_checkin(record.date, record.type, record.value)
+    except Exception as e:
+        logger.error(f"Add checkin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/health-assistant/recipes", response_model=List[RecipeItem])
+async def list_recipes():
+    try:
+        svc = get_health_assistant_service()
+        return svc.list_recipes()
+    except Exception as e:
+        logger.error(f"List recipes error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/health-assistant/recipes", response_model=RecipeItem)
+async def add_recipe(recipe: RecipeCreate):
+    try:
+        svc = get_health_assistant_service()
+        return svc.add_recipe(recipe.date, recipe.meal_type, recipe.name, recipe.calories)
+    except Exception as e:
+        logger.error(f"Add recipe error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/health-assistant/therapies", response_model=List[TherapyItem])
+async def list_therapies():
+    try:
+        svc = get_health_assistant_service()
+        return svc.list_therapies()
+    except Exception as e:
+        logger.error(f"List therapies error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/health-assistant/therapies", response_model=TherapyItem)
+async def add_therapy(therapy: TherapyCreate):
+    try:
+        svc = get_health_assistant_service()
+        return svc.add_therapy(therapy.date, therapy.name, therapy.duration_min, therapy.notes)
+    except Exception as e:
+        logger.error(f"Add therapy error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- New: Metrics & Score Endpoints ---
+
+@router.post("/health-assistant/metrics", response_model=List[MetricRecord])
+async def add_metrics(payload: Union[List[MetricCreate], MetricCreate]):
+    try:
+        svc = get_health_assistant_service()
+        if isinstance(payload, list):
+            return svc.add_metrics(payload)
+        else:
+            return [svc.add_metric(payload)]
+    except Exception as e:
+        logger.error(f"Add metrics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/health-assistant/metrics", response_model=List[MetricRecord])
+async def list_metrics(type: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None):
+    try:
+        svc = get_health_assistant_service()
+        return svc.list_metrics(type, start, end)
+    except Exception as e:
+        logger.error(f"List metrics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/health-assistant/metrics/series")
+async def metrics_series(types: str, start: Optional[str] = None, end: Optional[str] = None):
+    try:
+        svc = get_health_assistant_service()
+        type_list = [t.strip() for t in types.split(',') if t.strip()]
+        return svc.metrics_series(type_list, start, end)
+    except Exception as e:
+        logger.error(f"Metrics series error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/health-assistant/score", response_model=ScoreRecord)
+async def get_score(date: Optional[str] = None):
+    try:
+        svc = get_health_assistant_service()
+        return svc.compute_score(date)
+    except Exception as e:
+        logger.error(f"Get score error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/health-assistant/score/history", response_model=List[ScoreRecord])
+async def score_history(days: int = 30):
+    try:
+        svc = get_health_assistant_service()
+        return svc.score_history(days)
+    except Exception as e:
+        logger.error(f"Score history error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- New: Generate & Adjust ---
+
+@router.post("/health-assistant/generate/plan", response_model=List[PlanItem])
+async def generate_plan(date: Optional[str] = None):
+    try:
+        svc = get_health_assistant_service()
+        return svc.generate_plan(date)
+    except Exception as e:
+        logger.error(f"Generate plan error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/health-assistant/generate/recipes", response_model=List[RecipeItem])
+async def generate_recipes(date: Optional[str] = None):
+    try:
+        svc = get_health_assistant_service()
+        return svc.generate_recipes(date)
+    except Exception as e:
+        logger.error(f"Generate recipes error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/health-assistant/generate/therapies", response_model=List[TherapyItem])
+async def generate_therapies(date: Optional[str] = None):
+    try:
+        svc = get_health_assistant_service()
+        return svc.generate_therapies(date)
+    except Exception as e:
+        logger.error(f"Generate therapies error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/health-assistant/adjust", response_model=List[PlanItem])
+async def adjust_plans(date: Optional[str] = None):
+    try:
+        svc = get_health_assistant_service()
+        return svc.adjust_plans(date)
+    except Exception as e:
+        logger.error(f"Adjust plans error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

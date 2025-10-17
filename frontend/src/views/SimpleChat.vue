@@ -29,7 +29,7 @@ export default {
   name: 'SimpleChat',
   setup() {
     const messages = reactive([
-      { role: 'assistant', content: '你好！我是LiuAgent，请输入消息测试。' }
+      { role: 'assistant', content: '你好！我是武昌工学院的元启康健AI智能健康小助手小元-，很高兴为你服务。请问有什么可以帮你的吗？' }
     ])
     const inputText = ref('')
     

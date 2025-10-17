@@ -5,6 +5,7 @@ from typing import Optional, Dict, Any
 from app.models.schemas import ChatRequest, ChatResponse, ChatMessage
 from app.agents.manus_agent import ManusAgent
 from app.core.logger import logger
+from app.core import get_config
 
 
 class ConversationManager:
@@ -50,9 +51,10 @@ class ChatService:
             
             # ManusAgent doesn't need configuration - it has all tools integrated
             
-            # 使用DeepSeek API处理请求
+            # 使用配置的 LLM 提供商处理请求
             import openai
-            
+            config = get_config()
+
             # 构建消息
             messages = [
                 {"role": "system", "content": "你是LiuAgent，武昌工学院的AI智能助手。你具备知识库查询、网络搜索、文件操作等多种能力。请用中文回答，保持专业和友好的态度。"}, 
@@ -60,10 +62,11 @@ class ChatService:
             ]
             
             try:
-                # 直接使用提供的DeepSeek API密钥
-                api_key = "sk-99b2bc0657b24c7ba54084593d106620"
-                base_url = "https://api.deepseek.com/v1"
-                model = "deepseek-chat"
+                api_key = config.llm.api_key or ""
+                base_url = config.llm.base_url or "https://api.openai.com/v1"
+                model = config.llm.model or "gpt-4o-mini"
+                if not api_key:
+                    raise RuntimeError("LLM API key 未配置，请在 config/config.toml 中设置 llm.api_key 或通过环境变量注入")
                 
                 # 创建OpenAI客户端直接调用DeepSeek API
                 client = openai.OpenAI(
@@ -115,11 +118,15 @@ class ChatService:
             
             # Note: ManusAgent currently未提供 set_configuration 方法，避免调用以防 AttributeError
             
-            # DeepSeek API (via OpenAI client) streaming
+            # LLM Streaming (via OpenAI client)
             import openai
-            api_key = "sk-99b2bc0657b24c7ba54084593d106620"
-            base_url = "https://api.deepseek.com/v1"
-            model = "deepseek-chat"
+            config = get_config()
+            api_key = config.llm.api_key or ""
+            base_url = config.llm.base_url or "https://api.openai.com/v1"
+            model = config.llm.model or "gpt-4o-mini"
+            if not api_key:
+                yield {"error": "LLM API key 未配置"}
+                return
             
             # 构建消息
             messages = [

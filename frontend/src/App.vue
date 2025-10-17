@@ -4,10 +4,10 @@
       <!-- Left Sidebar -->
       <el-aside class="app-sidebar" width="280px">
         <div class="sidebar-header">
-          <img src="/logo.svg" alt="武昌工学院" class="logo" />
+          <img src="/yuanqi.jpg" alt="元启康健AI" class="logo" />
           <div class="title-section">
-            <h2 class="title">LiuAgent</h2>
-            <span class="subtitle">武昌工学院 AI 竞赛项目</span>
+            <h2 class="title">元启康健AI智能健康小助手</h2>
+            <span class="subtitle">AI个人健康助理 · 小元</span>
           </div>
         </div>
         
@@ -24,6 +24,30 @@
           <el-menu-item index="/knowledge">
             <el-icon><Document /></el-icon>
             <span>知识库管理</span>
+          </el-menu-item>
+          <el-menu-item index="/assistant">
+            <el-icon><User /></el-icon>
+            <span>医疗小助手</span>
+          </el-menu-item>
+          <el-menu-item index="/assistant/plan">
+            <el-icon><Calendar /></el-icon>
+            <span>我的计划</span>
+          </el-menu-item>
+          <el-menu-item index="/assistant/checkin">
+            <el-icon><Finished /></el-icon>
+            <span>健康打卡</span>
+          </el-menu-item>
+          <el-menu-item index="/assistant/recipes">
+            <el-icon><Food /></el-icon>
+            <span>营养食谱</span>
+          </el-menu-item>
+          <el-menu-item index="/assistant/therapy">
+            <el-icon><MagicStick /></el-icon>
+            <span>养身理疗</span>
+          </el-menu-item>
+          <el-menu-item index="/assistant/profile">
+            <el-icon><Setting /></el-icon>
+            <span>后台信息</span>
           </el-menu-item>
         </el-menu>
 
@@ -82,7 +106,7 @@ export default {
 }
 
 .app-sidebar {
-  background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+  background: linear-gradient(180deg, #1e80ff 0%, #3ba0ff 100%);
   color: white;
   display: flex;
   flex-direction: column;
@@ -100,7 +124,9 @@ export default {
 .logo {
   width: 45px;
   height: 45px;
-  filter: brightness(0) invert(1);
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .title-section {
@@ -168,7 +194,7 @@ export default {
 }
 
 .main-container {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, #f6fbff 0%, #e8f3ff 100%);
   display: flex;
   flex-direction: column;
 }
