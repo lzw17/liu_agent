@@ -8,6 +8,9 @@
       </div>
       <div class="header-right">
         <el-space>
+          <el-select v-model="activeProvider" placeholder="选择模型" size="large" style="min-width: 180px" @change="saveProvider">
+            <el-option v-for="p in providers" :key="p" :label="p" :value="p" />
+          </el-select>
           <el-switch
             v-model="useKnowledgeBase"
             active-text="知识库增强"
@@ -181,6 +184,8 @@ export default {
     const conversationId = ref(null)
     const messagesContainer = ref(null)
     const showToolsDialog = ref(false)
+    const providers = ref([])
+    const activeProvider = ref('primary')
 
     // Configure marked for better rendering
     marked.setOptions({
@@ -221,141 +226,114 @@ export default {
       await scrollToBottom()
 
       try {
-        if (useKnowledgeBase.value) {
-          // 非纯对话：保持原有一次性响应，便于携带知识库结果
-          const response = await api.post('/api/chat', {
-            message: currentMessage,
-            use_knowledge_base: true,
-            conversation_id: conversationId.value
-          })
+        // 统一使用流式输出（SSE）
+        const originBase = (typeof window !== 'undefined' && window.location) ? window.location.origin : ''
+        const apiBase = (api && api.defaults && api.defaults.baseURL) ? api.defaults.baseURL : ''
+        const base = originBase || apiBase || ''
+        const url = new URL('/api/chat/stream', base.endsWith('/') ? base : base + '/').toString()
 
-          const assistantMessage = {
-            role: 'assistant',
-            content: response.data.response,
-            timestamp: new Date()
-          }
+        const payload = {
+          message: currentMessage,
+          use_knowledge_base: !!useKnowledgeBase.value,
+          conversation_id: conversationId.value,
+          provider: activeProvider.value
+        }
 
-          messages.push(assistantMessage)
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+          body: JSON.stringify(payload)
+        })
 
-          if (response.data.conversation_id) {
-            conversationId.value = response.data.conversation_id
-          }
-          await scrollToBottom()
-        } else {
-          // 纯对话：使用流式输出
-          const originBase = (typeof window !== 'undefined' && window.location) ? window.location.origin : ''
-          const apiBase = (api && api.defaults && api.defaults.baseURL) ? api.defaults.baseURL : ''
-          // 优先同源（尤其在 https 场景，避免混合内容被浏览器拦截）
-          const base = originBase || apiBase || ''
-          const url = new URL('/api/chat/stream', base.endsWith('/') ? base : base + '/').toString()
+        if (!resp.ok) throw new Error(`流式接口HTTP错误: ${resp.status}`)
 
-          const payload = {
-            message: currentMessage,
-            use_knowledge_base: false,
-            conversation_id: conversationId.value
-          }
+        // 先创建一条空的 assistant 消息用于增量渲染
+        const assistantMessage = { role: 'assistant', content: '', timestamp: new Date() }
+        messages.push(assistantMessage)
+        await scrollToBottom()
 
-          const resp = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
-            body: JSON.stringify(payload)
-          })
-
-          if (!resp.ok) throw new Error(`流式接口HTTP错误: ${resp.status}`)
-
-          // 先创建一条空的 assistant 消息用于增量渲染
-          const assistantMessage = { role: 'assistant', content: '', timestamp: new Date() }
-          messages.push(assistantMessage)
-          await scrollToBottom()
-
-          if (resp.body && resp.body.getReader) {
-            // 原生流式读取
-            const reader = resp.body.getReader()
-            const decoder = new TextDecoder('utf-8')
-            let buffer = ''
-            while (true) {
-              const { done, value } = await reader.read()
-              if (done) break
-              buffer += decoder.decode(value, { stream: true })
-              const parts = buffer.split('\n\n')
-              buffer = parts.pop() || ''
-              for (const chunk of parts) {
-                const line = chunk.trim()
-                if (!line || !line.startsWith('data:')) continue
-                const dataStr = line.replace(/^data:\s*/, '')
-                if (dataStr === '[DONE]') { buffer = ''; break }
-                try {
-                  const obj = JSON.parse(dataStr)
-                  const piece = obj.delta || obj.response || obj.content || ''
-                  if (piece) {
-                    assistantMessage.content += piece
-                    messages[messages.length - 1] = { ...assistantMessage }
-                    await scrollToBottom()
-                  }
-                  if (obj.conversation_id && !conversationId.value) {
-                    conversationId.value = obj.conversation_id
-                  }
-                } catch (e) {
-                  console.warn('解析流数据失败:', e, line)
-                }
-              }
-            }
-          } else {
-            // 某些环境（老浏览器/代理）不支持流式；退化为一次性文本解析
-            const text = await resp.text()
-            const blocks = text.split('\n\n')
-            for (const blk of blocks) {
-              const line = blk.trim()
+        if (resp.body && resp.body.getReader) {
+          // 原生流式读取
+          const reader = resp.body.getReader()
+          const decoder = new TextDecoder('utf-8')
+          let buffer = ''
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const parts = buffer.split('\n\n')
+            buffer = parts.pop() || ''
+            for (const chunk of parts) {
+              const line = chunk.trim()
               if (!line || !line.startsWith('data:')) continue
               const dataStr = line.replace(/^data:\s*/, '')
-              if (dataStr === '[DONE]') break
+              if (dataStr === '[DONE]') { buffer = ''; break }
               try {
                 const obj = JSON.parse(dataStr)
                 const piece = obj.delta || obj.response || obj.content || ''
                 if (piece) {
                   assistantMessage.content += piece
                   messages[messages.length - 1] = { ...assistantMessage }
+                  await scrollToBottom()
                 }
                 if (obj.conversation_id && !conversationId.value) {
                   conversationId.value = obj.conversation_id
                 }
               } catch (e) {
-                console.warn('解析文本块失败:', e, line)
+                console.warn('解析流数据失败:', e, line)
               }
             }
-            await scrollToBottom()
           }
+        } else {
+          // 某些环境不支持流式；退化为一次性文本解析
+          const text = await resp.text()
+          const blocks = text.split('\n\n')
+          for (const blk of blocks) {
+            const line = blk.trim()
+            if (!line || !line.startsWith('data:')) continue
+            const dataStr = line.replace(/^data:\s*/, '')
+            if (dataStr === '[DONE]') break
+            try {
+              const obj = JSON.parse(dataStr)
+              const piece = obj.delta || obj.response || obj.content || ''
+              if (piece) {
+                assistantMessage.content += piece
+                messages[messages.length - 1] = { ...assistantMessage }
+              }
+              if (obj.conversation_id && !conversationId.value) {
+                conversationId.value = obj.conversation_id
+              }
+            } catch (e) {
+              console.warn('解析文本块失败:', e, line)
+            }
+          }
+          await scrollToBottom()
         }
       } catch (error) {
         console.error('Chat error:', error)
-        // 当流式失败时，自动回退到非流式（仅在纯对话模式下回退）
-        if (!useKnowledgeBase.value) {
-          try {
-            console.warn('流式失败，回退到非流式 /api/chat ...')
-            const response = await api.post('/api/chat', {
-              message: currentMessage,
-              use_knowledge_base: false,
-              conversation_id: conversationId.value
-            })
-            // 将回退的结果追加到最后一条 assistant 消息（若没有则新增）
-            const content = response?.data?.response || ''
-            const last = messages[messages.length - 1]
-            if (last && last.role === 'assistant') {
-              last.content = (last.content || '') + content
-              messages[messages.length - 1] = { ...last }
-            } else {
-              messages.push({ role: 'assistant', content, timestamp: new Date() })
-            }
-            if (response?.data?.conversation_id && !conversationId.value) {
-              conversationId.value = response.data.conversation_id
-            }
-            await scrollToBottom()
-          } catch (fallbackErr) {
-            console.error('Fallback /api/chat 也失败:', fallbackErr)
-            const msg = (error && error.message) ? error.message : '发送消息失败，请重试'
-            ElMessage.error(msg)
+        // 流式失败统一回退到非流式接口
+        try {
+          console.warn('流式失败，回退到非流式 /api/chat ...')
+          const response = await api.post('/api/chat', {
+            message: currentMessage,
+            use_knowledge_base: !!useKnowledgeBase.value,
+            conversation_id: conversationId.value,
+            provider: activeProvider.value
+          })
+          const content = response?.data?.response || ''
+          const last = messages[messages.length - 1]
+          if (last && last.role === 'assistant') {
+            last.content = (last.content || '') + content
+            messages[messages.length - 1] = { ...last }
+          } else {
+            messages.push({ role: 'assistant', content, timestamp: new Date() })
           }
-        } else {
+          if (response?.data?.conversation_id && !conversationId.value) {
+            conversationId.value = response.data.conversation_id
+          }
+          await scrollToBottom()
+        } catch (fallbackErr) {
+          console.error('Fallback /api/chat 也失败:', fallbackErr)
           const msg = (error && error.message) ? error.message : '发送消息失败，请重试'
           ElMessage.error(msg)
         }
@@ -388,8 +366,26 @@ export default {
       showToolsDialog.value = false
     }
 
-    onMounted(() => {
-      // Remove welcome message to show capability cards instead
+    const saveProvider = () => {
+      try { localStorage.setItem('liuagent_provider', activeProvider.value || 'primary') } catch (e) {}
+    }
+
+    onMounted(async () => {
+      try {
+        const cached = localStorage.getItem('liuagent_provider')
+        if (cached) activeProvider.value = cached
+      } catch (e) {}
+      try {
+        const { data } = await api.get('/api/config')
+        if (data && Array.isArray(data.llm_providers)) {
+          providers.value = data.llm_providers
+          if (!providers.value.includes(activeProvider.value)) {
+            activeProvider.value = providers.value[0] || 'primary'
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
     })
 
     return {
@@ -405,7 +401,10 @@ export default {
       clearMessages,
       handleToolsDialogClose,
       insertToolCommand,
-      messagesContainer
+      messagesContainer,
+      providers,
+      activeProvider,
+      saveProvider
     }
   }
 }

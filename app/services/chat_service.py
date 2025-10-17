@@ -1,11 +1,12 @@
 """Enhanced chat service using improved agent architecture."""
 import uuid
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from app.models.schemas import ChatRequest, ChatResponse, ChatMessage
 from app.agents.manus_agent import ManusAgent
 from app.core.logger import logger
 from app.core import get_config
+from app.services.llm_service import get_llm_service
 
 
 class ConversationManager:
@@ -39,63 +40,42 @@ class ChatService:
         self.conversation_manager = ConversationManager()
     
     async def chat(self, request: ChatRequest) -> ChatResponse:
-        """Process chat request using enhanced LiuAgent."""
+        """Process chat request using enhanced LiuAgent via LLMService."""
+        conversation_id = request.conversation_id
         try:
             # Get or create conversation agent
-            conversation_id = request.conversation_id
             if not conversation_id:
                 conversation_id = self.conversation_manager.create_conversation()
-            
+
             # Get conversation agent
             agent = self.conversation_manager.get_conversation(conversation_id)
-            
-            # ManusAgent doesn't need configuration - it has all tools integrated
-            
-            # 使用配置的 LLM 提供商处理请求
-            import openai
-            config = get_config()
 
-            # 构建消息
-            messages = [
-                {"role": "system", "content": "你是LiuAgent，武昌工学院的AI智能助手。你具备知识库查询、网络搜索、文件操作等多种能力。请用中文回答，保持专业和友好的态度。"}, 
-                {"role": "user", "content": request.message}
+            # Build messages for provider
+            messages: List[ChatMessage] = [
+                ChatMessage(role="system", content="你是元启康健AI智能健康小助手小元。你具备知识库查询、网络搜索、文件操作等多种能力。请用中文回答，保持专业和友好的态度。"),
+                ChatMessage(role="user", content=request.message)
             ]
-            
-            try:
-                api_key = config.llm.api_key or ""
-                base_url = config.llm.base_url or "https://api.openai.com/v1"
-                model = config.llm.model or "gpt-4o-mini"
-                if not api_key:
-                    raise RuntimeError("LLM API key 未配置，请在 config/config.toml 中设置 llm.api_key 或通过环境变量注入")
-                
-                # 创建OpenAI客户端直接调用DeepSeek API
-                client = openai.OpenAI(
-                    api_key=api_key,
-                    base_url=base_url
-                )
-                
-                # 调用API
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-                
-                # 提取响应
-                result = response.choices[0].message.content
-                
-            except Exception as e:
-                logger.error(f"DeepSeek API调用失败: {e}")
-                result = f"抱歉，我暂时无法回答您的问题。请稍后再试。错误信息：{str(e)}"
-            
+
+            # Use LLMService with provider selection
+            llm = get_llm_service()
+            result = await llm.chat_completion(
+                messages,
+                provider=request.provider or "primary",
+                max_tokens=request.max_tokens or None,
+                temperature=request.temperature or None
+            )
+
             return ChatResponse(
                 response=result,
                 conversation_id=conversation_id,
                 sources=[],
-                metadata={"agent_type": "ManusAgent", "tools_available": len(agent.available_tools.tools)}
+                metadata={
+                    "agent_type": "ManusAgent",
+                    "tools_available": len(agent.available_tools.tools),
+                    "provider": request.provider or "primary"
+                }
             )
-            
+
         except Exception as e:
             logger.error(f"Chat processing failed: {e}")
             return ChatResponse(
@@ -106,81 +86,42 @@ class ChatService:
             )
     
     async def stream_chat(self, request: ChatRequest):
-        """Process chat request with streaming response using enhanced agent."""
+        """Process chat request with streaming response using LLMService."""
         try:
             # Get or create conversation agent
             conversation_id = request.conversation_id
             if not conversation_id:
                 conversation_id = self.conversation_manager.create_conversation()
-            
-            # Get conversation agent
-            agent = self.conversation_manager.get_conversation(conversation_id)
-            
-            # Note: ManusAgent currently未提供 set_configuration 方法，避免调用以防 AttributeError
-            
-            # LLM Streaming (via OpenAI client)
-            import openai
-            config = get_config()
-            api_key = config.llm.api_key or ""
-            base_url = config.llm.base_url or "https://api.openai.com/v1"
-            model = config.llm.model or "gpt-4o-mini"
-            if not api_key:
-                yield {"error": "LLM API key 未配置"}
-                return
-            
-            # 构建消息
-            messages = [
-                {"role": "system", "content": "你是LiuAgent，武昌工学院的AI智能助手。你具备知识库查询、网络搜索、文件操作等多种能力。请用中文回答，保持专业和友好的态度。"},
-                {"role": "user", "content": request.message}
+
+            # Ensure agent exists (for future tool integration)
+            _ = self.conversation_manager.get_conversation(conversation_id)
+
+            # Build messages
+            messages: List[ChatMessage] = [
+                ChatMessage(role="system", content="你是元启康健AI智能健康小助手小元。你具备知识库查询、网络搜索、文件操作等多种能力。请用中文回答，保持专业和友好的态度。"),
+                ChatMessage(role="user", content=request.message)
             ]
-            
-            client = openai.OpenAI(api_key=api_key, base_url=base_url)
-            
-            # 首先发送一个初始化块，包含会话ID，便于前端建立上下文
+
+            # Send start block
             yield {"type": "start", "conversation_id": conversation_id}
-            # 立即发送一个极小的增量，帮助前端确认SSE通道已建立
             yield {"type": "delta", "delta": ""}
-            
-            # 开启流式响应
-            stream = client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=2048,
-                stream=True
-            )
-            
-            # 逐块发送增量内容
-            full_text = []
-            for event in stream:
-                try:
-                    choice = None
-                    # 兼容不同返回结构（OpenAI SDK v1 风格）
-                    if hasattr(event, "choices") and event.choices:
-                        choice = event.choices[0]
-                    if choice is None:
-                        continue
-                    delta = getattr(choice, "delta", None) or getattr(choice, "message", None)
-                    content_piece = None
-                    if delta is not None:
-                        # delta 可能是一个对象，包含 content 字段
-                        content_piece = getattr(delta, "content", None)
-                        if content_piece is None and isinstance(delta, dict):
-                            content_piece = delta.get("content")
-                    if content_piece:
-                        full_text.append(content_piece)
-                        yield {"type": "delta", "delta": content_piece}
-                except Exception as inner_e:
-                    # 出现解析问题时不中断整体流
-                    logger.warning(f"Stream chunk parse warning: {inner_e}")
-                    continue
-            
-            # 结束块（包含完整拼接文本，方便前端一次性拿到最终内容）
-            yield {"type": "done", "conversation_id": conversation_id, "text": "".join(full_text)}
-            
+
+            llm = get_llm_service()
+            full_text_parts: List[str] = []
+            async for piece in llm.stream_completion(
+                messages,
+                provider=request.provider or "primary",
+                max_tokens=request.max_tokens or None,
+                temperature=request.temperature or None
+            ):
+                if piece:
+                    full_text_parts.append(piece)
+                    yield {"type": "delta", "delta": piece}
+
+            yield {"type": "done", "conversation_id": conversation_id, "text": "".join(full_text_parts)}
+
         except Exception as e:
             logger.error(f"Stream chat processing failed: {e}")
-            # 将错误以结构化形式返回
             yield {"error": f"抱歉，处理您的消息时出现了错误：{str(e)}"}
 
 

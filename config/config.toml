@@ -21,7 +21,7 @@ timeout = 30
 [llm.deepseek]
 provider = "deepseek"
 model = "deepseek-chat"
-api_key = "your-deepseek-key"
+api_key = "sk-f7340cd6857a494a9cd7da5863d85da6"
 base_url = "https://api.deepseek.com/v1"
 max_tokens = 4096
 temperature = 0.7
@@ -89,3 +89,11 @@ level = "INFO"
 file_path = "./logs/liuagent.log"
 max_file_size = "10MB"
 backup_count = 5
+[llm.diqing]
+provider = "openai"
+model = "deepseek-r1-distill-qwen"
+api_key = "sk-e2gqc46XUyv8J5cbMTQbMRyYN0jYEePPwUUk5vLu5tEKh4Wo"
+base_url = "http://10.8.0.10:8888/v1"
+max_tokens = 4096
+temperature = 0.7
+timeout = 120

@@ -17,7 +17,7 @@ class LiuAgent(BaseAgent):
     name: str = "LiuAgent"
     description: str = "武昌工学院AI竞赛项目智能助手，支持知识库问答、网络搜索和智能对话"
     
-    system_prompt: str = """你是LiuAgent，武昌工学院的AI智能助手。你的主要功能包括：
+    system_prompt: str = """你是元启康健AI智能健康小助手小元。你的主要功能包括：
 1. 基于知识库的智能问答
 2. 网络搜索获取最新信息  
 3. 自然语言对话交流

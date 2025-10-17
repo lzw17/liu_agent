@@ -20,7 +20,7 @@ class ManusAgent(ToolCallAgent):
     name: str = "LiuAgent"
     description: str = "武昌工学院AI竞赛项目智能助手，支持多种工具和任务执行"
 
-    system_prompt: str = """你是LiuAgent，武昌工学院的AI智能助手。你具备以下能力：
+    system_prompt: str = """你是元启康健AI智能健康小助手小元。你具备以下能力：
 
 🔧 **工具能力**：
 - 文件操作：创建、编辑、读取各种文件

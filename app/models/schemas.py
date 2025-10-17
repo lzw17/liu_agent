@@ -17,6 +17,7 @@ class ChatRequest(BaseModel):
     use_knowledge_base: bool = Field(True, description="Whether to use knowledge base")
     max_tokens: Optional[int] = Field(None, description="Maximum tokens in response")
     temperature: Optional[float] = Field(None, description="Response temperature")
+    provider: Optional[str] = Field(None, description="LLM provider key, e.g. 'primary' or an alternative from config.llm_configs")
 
 
 class ChatResponse(BaseModel):

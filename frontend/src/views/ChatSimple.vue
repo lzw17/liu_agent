@@ -105,6 +105,13 @@ export default {
     const messages = reactive([])
     const inputMessage = ref('')
     const loading = ref(false)
+    const activeProvider = ref('primary')
+
+    try {
+      const cached = localStorage.getItem('liuagent_provider')
+      if (cached) activeProvider.value = cached
+    } catch (e) {}
+    const conversationId = ref(null)
 
     const formatMessage = (content) => {
       return content.replace(/\n/g, '<br>')
@@ -129,28 +136,106 @@ export default {
       loading.value = true
 
       try {
-        const response = await api.post('/api/chat', {
+        const originBase = (typeof window !== 'undefined' && window.location) ? window.location.origin : ''
+        const apiBase = (api && api.defaults && api.defaults.baseURL) ? api.defaults.baseURL : ''
+        const base = originBase || apiBase || ''
+        const url = new URL('/api/chat/stream', base.endsWith('/') ? base : base + '/').toString()
+
+        const payload = {
           message: currentMessage,
-          use_knowledge_base: true
+          use_knowledge_base: false,
+          conversation_id: conversationId.value,
+          provider: activeProvider.value
+        }
+
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+          body: JSON.stringify(payload)
         })
 
-        const assistantMessage = {
-          role: 'assistant',
-          content: response.data.response,
-          timestamp: new Date()
-        }
+        if (!resp.ok) throw new Error(`流式接口HTTP错误: ${resp.status}`)
 
+        const assistantMessage = { role: 'assistant', content: '', timestamp: new Date() }
         messages.push(assistantMessage)
-      } catch (error) {
-        console.error('Chat error:', error)
-        ElMessage.error('发送消息失败，请重试')
-        
-        const errorMessage = {
-          role: 'assistant',
-          content: '抱歉，我现在无法回复。请检查网络连接或稍后重试。',
-          timestamp: new Date()
+
+        if (resp.body && resp.body.getReader) {
+          const reader = resp.body.getReader()
+          const decoder = new TextDecoder('utf-8')
+          let buffer = ''
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const parts = buffer.split('\n\n')
+            buffer = parts.pop() || ''
+            for (const chunk of parts) {
+              const line = chunk.trim()
+              if (!line || !line.startsWith('data:')) continue
+              const dataStr = line.replace(/^data:\s*/, '')
+              if (dataStr === '[DONE]') { buffer = ''; break }
+              try {
+                const obj = JSON.parse(dataStr)
+                if (obj.type === 'start' && obj.conversation_id && !conversationId.value) {
+                  conversationId.value = obj.conversation_id
+                }
+                const piece = obj.delta || obj.response || obj.content || ''
+                if (piece) {
+                  assistantMessage.content += piece
+                  messages[messages.length - 1] = { ...assistantMessage }
+                }
+              } catch (e) {
+                // ignore parse error
+              }
+            }
+          }
+        } else {
+          const text = await resp.text()
+          const blocks = text.split('\n\n')
+          for (const blk of blocks) {
+            const line = blk.trim()
+            if (!line || !line.startsWith('data:')) continue
+            const dataStr = line.replace(/^data:\s*/, '')
+            if (dataStr === '[DONE]') break
+            try {
+              const obj = JSON.parse(dataStr)
+              if (obj.type === 'start' && obj.conversation_id && !conversationId.value) {
+                conversationId.value = obj.conversation_id
+              }
+              const piece = obj.delta || obj.response || obj.content || ''
+              if (piece) {
+                assistantMessage.content += piece
+                messages[messages.length - 1] = { ...assistantMessage }
+              }
+            } catch (e) {}
+          }
         }
-        messages.push(errorMessage)
+      } catch (error) {
+        try {
+          const response = await api.post('/api/chat', {
+            message: currentMessage,
+            use_knowledge_base: true,
+            conversation_id: conversationId.value,
+            provider: activeProvider.value
+          })
+          const assistantMessage = {
+            role: 'assistant',
+            content: response.data.response,
+            timestamp: new Date()
+          }
+          messages.push(assistantMessage)
+          if (response?.data?.conversation_id && !conversationId.value) {
+            conversationId.value = response.data.conversation_id
+          }
+        } catch (err2) {
+          ElMessage.error('发送消息失败，请重试')
+          const errorMessage = {
+            role: 'assistant',
+            content: '抱歉，我现在无法回复。请检查网络连接或稍后重试。',
+            timestamp: new Date()
+          }
+          messages.push(errorMessage)
+        }
       } finally {
         loading.value = false
       }
