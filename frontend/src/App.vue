@@ -81,7 +81,7 @@
         </el-main>
         
         <el-footer class="app-footer">
-          <p>&copy; 2024 武昌工学院 LiuAgent AI 竞赛项目 | Powered by DeepSeek</p>
+          <p>&copy; 2025 武昌工学院  AI 竞赛项目 </p>
         </el-footer>
       </el-container>
     </el-container>

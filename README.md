@@ -65,6 +65,10 @@ mkdir -p data logs uploads
 python main.py
 ```
 
+```bash
+nohup ./cloudflared tunnel --url http://localhost:8000 > cloudflared.log 2>&1 &
+```
+
 访问 http://localhost:8000 查看应用
 
 ## 📖 详细文档

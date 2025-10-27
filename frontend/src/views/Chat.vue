@@ -30,13 +30,21 @@
       <div v-if="messages.length === 0" class="welcome-message">
         <div class="welcome-content">
           <el-icon class="welcome-icon"><ChatDotRound /></el-icon>
-          <h3>你好！我是武昌工学院的元启康健AI智能健康小助手小元-，很高兴为你服务。请问有什么可以帮你的吗？</h3>
+          <h3>你好呀~我是来自武昌工学院元启康健的智能健康小助手小元，有什么可以帮助你的？</h3>
           <p></p>
           <div class="capabilities-grid">
             <div class="capability-card" @click="quickMessage('请介绍你的功能和工具')">
               <el-icon><Tools /></el-icon>
               <span>工具能力</span>
             </div>
+          <div class="quick-actions" style="margin-top: 16px;">
+            <el-tag class="action-tag" type="info" @click="quickMessage('你好')">你好</el-tag>
+            <el-tag class="action-tag" type="info" @click="quickMessage('你好小元')">你好小元</el-tag>
+            <el-tag class="action-tag" type="info" @click="quickMessage('你可以帮我做些什么？')">你可以帮我做些什么？</el-tag>
+            <el-tag class="action-tag" type="info" @click="quickMessage('我今天上学感到非常疲倦，我该怎么办？')">我今天上学感到非常疲倦，我该怎么办？</el-tag>
+            <el-tag class="action-tag" type="info" @click="quickMessage('我今天有800米体侧，需要注意什么？')">我今天有800米体侧，需要注意什么？</el-tag>
+            <el-tag class="action-tag" type="info" @click="quickMessage('今天的天气如何？')">今天的天气如何？</el-tag>
+          </div>
             <div class="capability-card" @click="quickMessage('帮我制定一个学习计划')">
               <el-icon><Calendar /></el-icon>
               <span>任务规划</span>
