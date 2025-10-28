@@ -17,7 +17,7 @@ from ..services import (
 from ..models.health_schemas import (
     UserProfile, PlanItem, PlanCreate, CheckinRecord, CheckinCreate,
     RecipeItem, RecipeCreate, TherapyItem, TherapyCreate,
-    MetricCreate, MetricRecord, ScoreRecord
+    MetricCreate, MetricRecord, ScoreRecord, PlanDoneUpdate
 )
 
 router = APIRouter()
@@ -287,6 +287,31 @@ async def add_plan(plan: PlanCreate):
         logger.error(f"Add plan error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.patch("/health-assistant/plans/{plan_id}/done", response_model=PlanItem)
+async def set_plan_done(plan_id: str, payload: PlanDoneUpdate):
+    try:
+        svc = get_health_assistant_service()
+        return svc.set_plan_done(plan_id, payload.done)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Set plan done error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/health-assistant/plans/{plan_id}")
+async def delete_plan(plan_id: str):
+    try:
+        svc = get_health_assistant_service()
+        ok = svc.delete_plan(plan_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete plan error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/health-assistant/today-plan", response_model=List[PlanItem])
 async def list_today_plan():
     try:
@@ -314,6 +339,20 @@ async def add_checkin(record: CheckinCreate):
         logger.error(f"Add checkin error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.delete("/health-assistant/checkins/{checkin_id}")
+async def delete_checkin(checkin_id: str):
+    try:
+        svc = get_health_assistant_service()
+        ok = svc.delete_checkin(checkin_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="Checkin not found")
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete checkin error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/health-assistant/recipes", response_model=List[RecipeItem])
 async def list_recipes():
     try:
@@ -330,6 +369,20 @@ async def add_recipe(recipe: RecipeCreate):
         return svc.add_recipe(recipe.date, recipe.meal_type, recipe.name, recipe.calories)
     except Exception as e:
         logger.error(f"Add recipe error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/health-assistant/recipes/{recipe_id}")
+async def delete_recipe(recipe_id: str):
+    try:
+        svc = get_health_assistant_service()
+        ok = svc.delete_recipe(recipe_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="Recipe not found")
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete recipe error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/health-assistant/therapies", response_model=List[TherapyItem])
@@ -350,6 +403,20 @@ async def add_therapy(therapy: TherapyCreate):
         logger.error(f"Add therapy error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.delete("/health-assistant/therapies/{therapy_id}")
+async def delete_therapy(therapy_id: str):
+    try:
+        svc = get_health_assistant_service()
+        ok = svc.delete_therapy(therapy_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="Therapy not found")
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete therapy error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # --- New: Metrics & Score Endpoints ---
 
 @router.post("/health-assistant/metrics", response_model=List[MetricRecord])
@@ -362,6 +429,20 @@ async def add_metrics(payload: Union[List[MetricCreate], MetricCreate]):
             return [svc.add_metric(payload)]
     except Exception as e:
         logger.error(f"Add metrics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/health-assistant/metrics/{metric_id}")
+async def delete_metric(metric_id: str):
+    try:
+        svc = get_health_assistant_service()
+        ok = svc.delete_metric(metric_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="Metric not found")
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete metric error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

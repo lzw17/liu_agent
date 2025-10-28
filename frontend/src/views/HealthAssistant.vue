@@ -42,6 +42,10 @@
               <el-tag type="warning" size="small">心血管 {{ score.subs?.cardio ?? '-' }}</el-tag>
               <el-tag type="info" size="small">睡眠 {{ score.subs?.sleep ?? '-' }}</el-tag>
               <el-tag type="primary" size="small">活动 {{ score.subs?.activity ?? '-' }}</el-tag>
+              <el-tag v-if="score.subs?.plan_completion !== undefined" size="small">计划完成 {{ score.subs.plan_completion }}%</el-tag>
+              <el-tag v-if="score.subs?.trend_bonus !== undefined" :type="(score.subs.trend_bonus||0) >= 0 ? 'success' : 'danger'" size="small">
+                趋势 {{ (score.subs.trend_bonus>=0?'+':'') + (score.subs.trend_bonus||0) }}
+              </el-tag>
             </div>
           </div>
         </el-card>
@@ -49,7 +53,7 @@
     </el-row>
 
     <el-row :gutter="20" class="quick-row">
-      <el-col :span="4">
+      <el-col :span="6">
         <el-card class="quick-card" shadow="hover" @click="$router.push('/assistant/plan')">
           <div class="qc">
             <el-icon class="icon"><Calendar /></el-icon>
@@ -57,7 +61,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="4">
+      <el-col :span="6">
         <el-card class="quick-card" shadow="hover" @click="$router.push('/assistant/checkin')">
           <div class="qc">
             <el-icon class="icon"><Finished /></el-icon>
@@ -65,7 +69,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="4">
+      <el-col :span="6">
         <el-card class="quick-card" shadow="hover" @click="$router.push('/assistant/recipes')">
           <div class="qc">
             <el-icon class="icon"><Food /></el-icon>
@@ -73,7 +77,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="4">
+      <el-col :span="6">
         <el-card class="quick-card" shadow="hover" @click="$router.push('/assistant/therapy')">
           <div class="qc">
             <el-icon class="icon"><MagicStick /></el-icon>
@@ -81,7 +85,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="4">
+      <el-col :span="6">
         <el-card class="quick-card" shadow="hover" @click="$router.push('/assistant/profile')">
           <div class="qc">
             <el-icon class="icon"><User /></el-icon>
@@ -89,7 +93,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="4">
+      <el-col :span="6">
         <el-card class="quick-card" shadow="hover" @click="$router.push('/assistant/metrics')">
           <div class="qc">
             <el-icon class="icon"><Histogram /></el-icon>
@@ -97,7 +101,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="4">
+      <el-col :span="6">
         <el-card class="quick-card" shadow="hover" @click="$router.push('/assistant/analytics')">
           <div class="qc">
             <el-icon class="icon"><DataAnalysis /></el-icon>
@@ -194,8 +198,8 @@ export default {
 .plan-item { display: flex; align-items: center; gap: 8px; }
 .plan-title { font-weight: 500; }
 .plan-title.done { text-decoration: line-through; color: #909399; }
-.quick-row{ margin-top: 20px; }
-.quick-card{ cursor:pointer; text-align:center; background: #ffffff; }
-.qc{ display:flex; flex-direction:column; align-items:center; gap:8px; padding: 24px 0; color:#1e80ff }
+.quick-row{ margin-top: 20px; display:flex; flex-wrap:wrap; justify-content:center; }
+.quick-card{ cursor:pointer; text-align:center; background: #ffffff; height:110px; border-radius:12px; display:flex; align-items:center; justify-content:center; }
+.qc{ display:flex; flex-direction:column; align-items:center; gap:8px; padding: 0; color:#1e80ff }
 .icon{ font-size: 28px; }
 </style>

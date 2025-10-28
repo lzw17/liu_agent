@@ -21,6 +21,16 @@
             <el-icon><Tools /></el-icon>
             工具箱
           </el-button>
+          <el-button @click="showHistoryDialog = true" size="small">历史</el-button>
+          <el-dropdown @command="handleSyncCommand">
+            <el-button size="small">一键同步</el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="plan">存为计划</el-dropdown-item>
+                <el-dropdown-item command="recipe">存为食谱</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </el-space>
       </div>
     </div>
@@ -28,7 +38,8 @@
     <!-- Messages Area -->
     <div class="messages-area" ref="messagesContainer">
       <div v-if="messages.length === 0" class="welcome-message">
-        <div class="welcome-content">
+        <div class="welcome-card">
+          <div class="welcome-content">
           <el-icon class="welcome-icon"><ChatDotRound /></el-icon>
           <h3>你好呀~我是来自武昌工学院元启康健的智能健康小助手小元，有什么可以帮助你的？</h3>
           <p></p>
@@ -37,26 +48,18 @@
               <el-icon><Tools /></el-icon>
               <span>工具能力</span>
             </div>
+            <div class="capability-card" @click="quickMessage('帮我制定一个学习计划')">
+              <el-icon><Calendar /></el-icon>
+              <span>任务规划</span>
+            </div>
+          </div>
           <div class="quick-actions" style="margin-top: 16px;">
             <el-tag class="action-tag" type="info" @click="quickMessage('你好')">你好</el-tag>
             <el-tag class="action-tag" type="info" @click="quickMessage('你好小元')">你好小元</el-tag>
             <el-tag class="action-tag" type="info" @click="quickMessage('你可以帮我做些什么？')">你可以帮我做些什么？</el-tag>
             <el-tag class="action-tag" type="info" @click="quickMessage('我今天上学感到非常疲倦，我该怎么办？')">我今天上学感到非常疲倦，我该怎么办？</el-tag>
-            <el-tag class="action-tag" type="info" @click="quickMessage('我今天有800米体侧，需要注意什么？')">我今天有800米体侧，需要注意什么？</el-tag>
             <el-tag class="action-tag" type="info" @click="quickMessage('今天的天气如何？')">今天的天气如何？</el-tag>
           </div>
-            <div class="capability-card" @click="quickMessage('帮我制定一个学习计划')">
-              <el-icon><Calendar /></el-icon>
-              <span>任务规划</span>
-            </div>
-            <div class="capability-card" @click="quickMessage('搜索人工智能最新发展')">
-              <el-icon><Search /></el-icon>
-              <span>信息搜索</span>
-            </div>
-            <div class="capability-card" @click="quickMessage('写一个Python程序计算斐波那契数列')">
-              <el-icon><Document /></el-icon>
-              <span>代码编程</span>
-            </div>
           </div>
         </div>
       </div>
@@ -173,11 +176,83 @@
         </div>
       </div>
     </el-dialog>
+
+    <el-dialog v-model="showHistoryDialog" title="历史对话" width="600px">
+      <div style="margin-bottom:10px;">
+        <el-input v-model="historyQuery" placeholder="搜索历史..." clearable />
+      </div>
+      <el-table :data="filteredConversations" height="360">
+        <el-table-column prop="title" label="标题" />
+        <el-table-column label="更新时间" width="160">
+          <template #default="{ row }">{{ new Date(row.updatedAt).toLocaleString('zh-CN') }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="180">
+          <template #default="{ row }">
+            <el-button type="primary" text size="small" @click="loadConversation(row.id)">打开</el-button>
+            <el-popconfirm title="删除该会话？" @confirm="removeConversation(row.id)">
+              <template #reference>
+                <el-button type="danger" text size="small">删除</el-button>
+              </template>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+
+    <el-dialog v-model="showSavePlanDialog" title="保存为计划" width="520px">
+      <el-form :model="planForm" label-width="80px">
+        <el-form-item label="日期">
+          <el-date-picker v-model="planForm.date" type="date" value-format="YYYY-MM-DD" />
+        </el-form-item>
+        <el-form-item label="类别">
+          <el-select v-model="planForm.category">
+            <el-option label="运动" value="运动" />
+            <el-option label="饮食" value="饮食" />
+            <el-option label="休息" value="休息" />
+            <el-option label="检查" value="检查" />
+            <el-option label="理疗" value="理疗" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="内容">
+          <el-input v-model="planForm.title" type="textarea" :rows="3" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showSavePlanDialog=false">取消</el-button>
+        <el-button type="primary" @click="savePlan" :loading="savingPlan">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showSaveRecipeDialog" title="保存为食谱" width="520px">
+      <el-form :model="recipeForm" label-width="80px">
+        <el-form-item label="日期">
+          <el-date-picker v-model="recipeForm.date" type="date" value-format="YYYY-MM-DD" />
+        </el-form-item>
+        <el-form-item label="餐别">
+          <el-select v-model="recipeForm.meal_type">
+            <el-option label="早餐" value="早餐" />
+            <el-option label="午餐" value="午餐" />
+            <el-option label="晚餐" value="晚餐" />
+            <el-option label="加餐" value="加餐" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="菜品">
+          <el-input v-model="recipeForm.name" type="textarea" :rows="3" />
+        </el-form-item>
+        <el-form-item label="热量">
+          <el-input v-model.number="recipeForm.calories" type="number" placeholder="可选" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showSaveRecipeDialog=false">取消</el-button>
+        <el-button type="primary" @click="saveRecipe" :loading="savingRecipe">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { ref, reactive, nextTick, onMounted } from 'vue'
+import { ref, reactive, nextTick, onMounted, computed } from 'vue'
 import { marked } from 'marked'
 import { ElMessage } from 'element-plus'
 import api from '../utils/api'
@@ -194,6 +269,15 @@ export default {
     const showToolsDialog = ref(false)
     const providers = ref([])
     const activeProvider = ref('primary')
+    const showHistoryDialog = ref(false)
+    const historyQuery = ref('')
+    const conversations = ref([])
+    const showSavePlanDialog = ref(false)
+    const showSaveRecipeDialog = ref(false)
+    const planForm = ref({ date: new Date().toISOString().slice(0,10), category: '运动', title: '' })
+    const recipeForm = ref({ date: new Date().toISOString().slice(0,10), meal_type: '早餐', name: '', calories: null })
+    const savingPlan = ref(false)
+    const savingRecipe = ref(false)
 
     // Configure marked for better rendering
     marked.setOptions({
@@ -227,6 +311,8 @@ export default {
       }
 
       messages.push(userMessage)
+      if (!conversationId.value) { conversationId.value = 'conv-' + Date.now() }
+      persistCurrentConversation()
       const currentMessage = inputMessage.value.trim()
       inputMessage.value = ''
       loading.value = true
@@ -292,6 +378,7 @@ export default {
               }
             }
           }
+          persistCurrentConversation()
         } else {
           // 某些环境不支持流式；退化为一次性文本解析
           const text = await resp.text()
@@ -316,6 +403,7 @@ export default {
             }
           }
           await scrollToBottom()
+          persistCurrentConversation()
         }
       } catch (error) {
         console.error('Chat error:', error)
@@ -378,10 +466,88 @@ export default {
       try { localStorage.setItem('liuagent_provider', activeProvider.value || 'primary') } catch (e) {}
     }
 
+    const loadConversations = () => {
+      try { conversations.value = JSON.parse(localStorage.getItem('liuagent_conversations') || '[]') } catch (e) { conversations.value = [] }
+    }
+    const saveConversations = () => {
+      try { localStorage.setItem('liuagent_conversations', JSON.stringify(conversations.value)) } catch (e) {}
+    }
+    const persistCurrentConversation = () => {
+      const id = conversationId.value || ('conv-' + Date.now())
+      conversationId.value = id
+      const firstUser = messages.find(m => m.role === 'user')
+      const title = (firstUser?.content || '新会话').slice(0, 50)
+      const payload = { id, title, messages: [...messages], updatedAt: Date.now(), provider: activeProvider.value, kb: !!useKnowledgeBase.value }
+      const idx = conversations.value.findIndex(c => c.id === id)
+      if (idx >= 0) conversations.value[idx] = payload
+      else conversations.value.unshift(payload)
+      saveConversations()
+      try { localStorage.setItem('liuagent_last_conversation', id) } catch (e) {}
+    }
+    const filteredConversations = computed(() => {
+      const q = (historyQuery.value || '').trim()
+      if (!q) return conversations.value
+      return conversations.value.filter(c => c.title.includes(q) || (c.messages || []).some(m => (m.content || '').includes(q)))
+    })
+    const loadConversation = (id) => {
+      const c = conversations.value.find(x => x.id === id)
+      if (!c) return
+      messages.splice(0, messages.length, ...c.messages)
+      conversationId.value = id
+      showHistoryDialog.value = false
+      try { localStorage.setItem('liuagent_last_conversation', id) } catch (e) {}
+    }
+    const removeConversation = (id) => {
+      const i = conversations.value.findIndex(x => x.id === id)
+      if (i >= 0) conversations.value.splice(i, 1)
+      saveConversations()
+      if (conversationId.value === id) {
+        messages.length = 0
+        conversationId.value = null
+      }
+    }
+    const handleSyncCommand = (cmd) => {
+      if (cmd === 'plan') openSavePlanDialog()
+      if (cmd === 'recipe') openSaveRecipeDialog()
+    }
+    const getLastAssistantText = () => {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === 'assistant' && messages[i].content) return messages[i].content
+      }
+      return ''
+    }
+    const openSavePlanDialog = () => {
+      const text = getLastAssistantText()
+      if (!text) { ElMessage.warning('暂无可保存的助理建议'); return }
+      planForm.value = { date: new Date().toISOString().slice(0,10), category: '运动', title: text.slice(0, 200) }
+      showSavePlanDialog.value = true
+    }
+    const openSaveRecipeDialog = () => {
+      const text = getLastAssistantText()
+      if (!text) { ElMessage.warning('暂无可保存的助理建议'); return }
+      recipeForm.value = { date: new Date().toISOString().slice(0,10), meal_type: '早餐', name: text.slice(0, 200), calories: null }
+      showSaveRecipeDialog.value = true
+    }
+    const savePlan = async () => {
+      if (!planForm.value.title) { ElMessage.warning('请填写计划内容'); return }
+      savingPlan.value = true
+      try { await api.post('/api/health-assistant/plans', { ...planForm.value, done: false }); ElMessage.success('已保存到我的计划'); showSavePlanDialog.value = false } catch (e) { ElMessage.error('保存失败') } finally { savingPlan.value = false }
+    }
+    const saveRecipe = async () => {
+      if (!recipeForm.value.name) { ElMessage.warning('请填写菜品'); return }
+      savingRecipe.value = true
+      try { await api.post('/api/health-assistant/recipes', { ...recipeForm.value }); ElMessage.success('已保存到营养食谱'); showSaveRecipeDialog.value = false } catch (e) { ElMessage.error('保存失败') } finally { savingRecipe.value = false }
+    }
+
     onMounted(async () => {
       try {
         const cached = localStorage.getItem('liuagent_provider')
         if (cached) activeProvider.value = cached
+      } catch (e) {}
+      loadConversations()
+      try {
+        const last = localStorage.getItem('liuagent_last_conversation')
+        if (last) loadConversation(last)
       } catch (e) {}
       try {
         const { data } = await api.get('/api/config')
@@ -402,6 +568,7 @@ export default {
       loading,
       useKnowledgeBase,
       showToolsDialog,
+      showHistoryDialog,
       formatMessage,
       formatTime,
       quickMessage,
@@ -412,7 +579,20 @@ export default {
       messagesContainer,
       providers,
       activeProvider,
-      saveProvider
+      saveProvider,
+      historyQuery,
+      filteredConversations,
+      loadConversation,
+      removeConversation,
+      handleSyncCommand,
+      showSavePlanDialog,
+      showSaveRecipeDialog,
+      planForm,
+      recipeForm,
+      savingPlan,
+      savingRecipe,
+      savePlan,
+      saveRecipe
     }
   }
 }
@@ -464,8 +644,20 @@ export default {
   text-align: center;
 }
 
+.welcome-card {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 28px 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
+  border: 1px solid #eef0f6;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(31, 41, 55, 0.08);
+}
+
 .welcome-content {
-  max-width: 500px;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 .welcome-icon {
@@ -488,10 +680,10 @@ export default {
 
 .capabilities-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-  margin-top: 20px;
-  max-width: 400px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px auto 6px;
+  max-width: 480px;
 }
 
 .capability-card {
@@ -499,13 +691,14 @@ export default {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 20px;
+  padding: 18px;
   border-radius: 12px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+  min-height: 96px;
 }
 
 .capability-card:hover {
@@ -581,8 +774,8 @@ export default {
 
 .action-tag {
   cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 8px 14px;
+  border-radius: 18px;
   transition: all 0.3s ease;
 }
 

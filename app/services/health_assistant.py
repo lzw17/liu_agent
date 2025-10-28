@@ -60,6 +60,26 @@ class HealthAssistantService:
         self._save(data)
         return item
 
+    def set_plan_done(self, plan_id: str, done: bool) -> PlanItem:
+        data = self._load()
+        plans = data.get("plans", [])
+        for p in plans:
+            if p.get("id") == plan_id:
+                p["done"] = bool(done)
+                self._save(data)
+                return PlanItem(**p)
+        raise ValueError(f"Plan not found: {plan_id}")
+
+    def delete_plan(self, plan_id: str) -> bool:
+        data = self._load()
+        plans = data.get("plans", [])
+        new_plans = [p for p in plans if p.get("id") != plan_id]
+        if len(new_plans) == len(plans):
+            return False
+        data["plans"] = new_plans
+        self._save(data)
+        return True
+
     def list_today_plan(self) -> List[PlanItem]:
         today = date.today().isoformat()
         return [p for p in self.list_plans() if p.date == today]
@@ -75,6 +95,16 @@ class HealthAssistantService:
         self._save(data)
         return item
 
+    def delete_checkin(self, checkin_id: str) -> bool:
+        data = self._load()
+        arr = data.get("checkins", [])
+        new_arr = [x for x in arr if x.get("id") != checkin_id]
+        if len(new_arr) == len(arr):
+            return False
+        data["checkins"] = new_arr
+        self._save(data)
+        return True
+
     def list_recipes(self) -> List[RecipeItem]:
         data = self._load()
         return [RecipeItem(**x) for x in data.get("recipes", [])]
@@ -86,6 +116,16 @@ class HealthAssistantService:
         self._save(data)
         return item
 
+    def delete_recipe(self, recipe_id: str) -> bool:
+        data = self._load()
+        arr = data.get("recipes", [])
+        new_arr = [x for x in arr if x.get("id") != recipe_id]
+        if len(new_arr) == len(arr):
+            return False
+        data["recipes"] = new_arr
+        self._save(data)
+        return True
+
     def list_therapies(self) -> List[TherapyItem]:
         data = self._load()
         return [TherapyItem(**x) for x in data.get("therapies", [])]
@@ -96,6 +136,16 @@ class HealthAssistantService:
         data.setdefault("therapies", []).append(item.model_dump())
         self._save(data)
         return item
+
+    def delete_therapy(self, therapy_id: str) -> bool:
+        data = self._load()
+        arr = data.get("therapies", [])
+        new_arr = [x for x in arr if x.get("id") != therapy_id]
+        if len(new_arr) == len(arr):
+            return False
+        data["therapies"] = new_arr
+        self._save(data)
+        return True
 
     def add_metric(self, m: MetricCreate) -> MetricRecord:
         data = self._load()
@@ -114,6 +164,16 @@ class HealthAssistantService:
                 data.setdefault("metrics", []).append(bmi_rec.model_dump())
         self._save(data)
         return rec
+
+    def delete_metric(self, metric_id: str) -> bool:
+        data = self._load()
+        arr = data.get("metrics", [])
+        new_arr = [x for x in arr if x.get("id") != metric_id]
+        if len(new_arr) == len(arr):
+            return False
+        data["metrics"] = new_arr
+        self._save(data)
+        return True
 
     def add_metrics(self, items: List[MetricCreate]) -> List[MetricRecord]:
         out: List[MetricRecord] = []
@@ -194,6 +254,8 @@ class HealthAssistantService:
         prof = data.get("profile") or {}
         h_cm = prof.get("height_cm")
         h_m = h_cm / 100.0 if h_cm else None
+
+        # --- Base components (same as before) ---
         weight = self._latest_metric("weight", d)
         bmi_metric = self._latest_metric("bmi", d)
         hr = self._latest_metric("heart_rate", d)
@@ -210,8 +272,73 @@ class HealthAssistantService:
         cardio_s = self._sub_cardio(hr.value if hr else None, sys.value if sys else None, dia.value if dia else None)
         sleep_s = self._sub_sleep(sleep.value if sleep else None)
         act_s = self._sub_activity(steps.value if steps else None)
-        total = round(bmi_s * 0.3 + cardio_s * 0.3 + sleep_s * 0.2 + act_s * 0.2, 2)
-        rec = ScoreRecord(date=d, total=total, subs={"bmi": round(bmi_s,2), "cardio": round(cardio_s,2), "sleep": round(sleep_s,2), "activity": round(act_s,2)})
+        base_total = round(bmi_s * 0.3 + cardio_s * 0.3 + sleep_s * 0.2 + act_s * 0.2, 2)
+
+        # --- Plan completion influence ---
+        plans = data.get("plans", [])
+        today_plans = [p for p in plans if p.get("date") == d]
+        plan_ratio: Optional[float] = None
+        if today_plans:
+            done_cnt = sum(1 for p in today_plans if bool(p.get("done")))
+            total_cnt = len(today_plans)
+            plan_ratio = done_cnt / total_cnt if total_cnt > 0 else None
+        # bonus from -10 to +10, neutral at 50% completion; if no plans, neutral 0
+        plan_bonus = 0.0 if plan_ratio is None else (plan_ratio - 0.5) * 20.0
+
+        # --- Trend adjustment vs previous day ---
+        prev_d = (datetime.fromisoformat(d).date() - timedelta(days=1)).isoformat()
+        prev_total: Optional[float] = None
+        # Prefer stored previous total if available
+        prev_scores = [x for x in data.get("scores", []) if x.get("date") == prev_d]
+        if prev_scores:
+            try:
+                prev_total = float(prev_scores[-1].get("total"))
+            except Exception:
+                prev_total = None
+        if prev_total is None:
+            # compute previous base total without saving
+            pw = self._latest_metric("weight", prev_d)
+            pbmi_m = self._latest_metric("bmi", prev_d)
+            phr = self._latest_metric("heart_rate", prev_d)
+            psys = self._latest_metric("bp_systolic", prev_d)
+            pdia = self._latest_metric("bp_diastolic", prev_d)
+            psteps = self._latest_metric("steps", prev_d)
+            psleep = self._latest_metric("sleep_hours", prev_d)
+            pbmi_val: Optional[float] = None
+            if pbmi_m:
+                pbmi_val = pbmi_m.value
+            elif pw and h_m and h_m > 0:
+                pbmi_val = round(pw.value / (h_m * h_m), 2)
+            pbmi_s = self._sub_bmi(pbmi_val)
+            pcardio_s = self._sub_cardio(phr.value if phr else None, psys.value if psys else None, pdia.value if pdia else None)
+            psleep_s = self._sub_sleep(psleep.value if psleep else None)
+            pact_s = self._sub_activity(psteps.value if psteps else None)
+            prev_total = round(pbmi_s * 0.3 + pcardio_s * 0.3 + psleep_s * 0.2 + pact_s * 0.2, 2)
+
+        # diff scaled to +/-5 max
+        trend_bonus = 0.0
+        if prev_total is not None:
+            diff = base_total - prev_total
+            trend_bonus = max(-5.0, min(5.0, diff * 0.2))
+
+        final_total = base_total + plan_bonus + trend_bonus
+        final_total = max(0.0, min(100.0, round(final_total, 2)))
+
+        subs = {
+            "bmi": round(bmi_s, 2),
+            "cardio": round(cardio_s, 2),
+            "sleep": round(sleep_s, 2),
+            "activity": round(act_s, 2),
+            "base": base_total,
+        }
+        if plan_ratio is not None:
+            subs["plan_completion"] = round(plan_ratio * 100.0, 1)  # percentage
+            subs["plan_bonus"] = round(plan_bonus, 2)
+        if prev_total is not None:
+            subs["prev_total"] = round(prev_total, 2)
+            subs["trend_bonus"] = round(trend_bonus, 2)
+
+        rec = ScoreRecord(date=d, total=final_total, subs=subs)
         scores = data.setdefault("scores", [])
         scores = [x for x in scores if x.get("date") != d]
         scores.append(rec.model_dump())

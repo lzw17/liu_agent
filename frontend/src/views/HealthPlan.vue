@@ -33,7 +33,7 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="plans" stripe class="table">
+      <el-table :data="pagedPlans" stripe class="table" max-height="60vh">
         <el-table-column prop="date" label="日期" width="140" />
         <el-table-column prop="category" label="类别" width="120" />
         <el-table-column prop="title" label="计划内容" />
@@ -42,7 +42,33 @@
             <el-tag :type="row.done ? 'success' : 'info'">{{ row.done ? '已完成' : '未完成' }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="操作" width="160">
+          <template #default="{ row }">
+            <el-switch
+              :model-value="row.done"
+              active-text="完成"
+              inactive-text="未完成"
+              @change="(val) => toggleDone(row, val)"
+            />
+            <el-popconfirm title="确定删除该计划吗？" @confirm="deletePlan(row)">
+              <template #reference>
+                <el-button type="danger" text size="small" style="margin-left:8px;">删除</el-button>
+              </template>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
       </el-table>
+
+      <div class="pager">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="plans.length"
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="pageSizes"
+        />
+      </div>
     </el-card>
   </div>
 </template>
@@ -59,6 +85,9 @@ export default {
       adjusting: false,
       adding: false,
       plans: [],
+      currentPage: 1,
+      pageSize: 10,
+      pageSizes: [5, 10, 20, 50],
       form: {
         date: new Date().toISOString().slice(0,10),
         category: '运动',
@@ -119,6 +148,33 @@ export default {
       } finally {
         this.adding = false
       }
+    },
+    async toggleDone(row, val) {
+      const prev = row.done
+      row.done = val
+      try {
+        await axios.patch(`/api/health-assistant/plans/${row.id}/done`, { done: val })
+        this.$message.success(val ? '已标记为完成' : '已标记为未完成')
+      } catch (e) {
+        row.done = prev
+        this.$message.error('更新状态失败')
+      }
+    },
+    async deletePlan(row) {
+      try {
+        await axios.delete(`/api/health-assistant/plans/${row.id}`)
+        this.$message.success('已删除')
+        this.fetchPlans()
+      } catch (e) {
+        this.$message.error('删除失败')
+      }
+    }
+  },
+  computed: {
+    pagedPlans() {
+      const start = (this.currentPage - 1) * this.pageSize
+      const end = start + this.pageSize
+      return this.plans.slice(start, end)
     }
   },
   mounted() {
@@ -132,5 +188,6 @@ export default {
 .header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px; }
 .form { margin-bottom: 12px; }
 .table { margin-top: 8px; }
+.pager { margin-top: 12px; display:flex; justify-content:flex-end; }
 .card { background: #fff; }
 </style>

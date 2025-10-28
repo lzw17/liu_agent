@@ -134,7 +134,8 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
-data/
+data/chroma_db/
+data/health_assistant.json
 uploads/
 logs/
 *.log
@@ -165,3 +166,4 @@ frontend/.temp
 
 # Cloudflare
 cloudflared
+cloudflared.log

@@ -31,6 +31,10 @@ class PlanCreate(BaseModel):
     done: Optional[bool] = False
 
 
+class PlanDoneUpdate(BaseModel):
+    done: bool
+
+
 class CheckinRecord(BaseModel):
     id: str = Field(...)
     date: str = Field(..., description="YYYY-MM-DD")

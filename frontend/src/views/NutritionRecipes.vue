@@ -32,12 +32,32 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="recipes" stripe class="table">
+      <el-table :data="pagedRecipes" stripe class="table" max-height="60vh">
         <el-table-column prop="date" label="日期" width="140" />
         <el-table-column prop="meal_type" label="餐别" width="120" />
         <el-table-column prop="name" label="菜品" />
         <el-table-column prop="calories" label="热量(kcal)" width="140" />
+        <el-table-column label="操作" width="120">
+          <template #default="{ row }">
+            <el-popconfirm title="确定删除该菜品吗？" @confirm="deleteRecipe(row)">
+              <template #reference>
+                <el-button type="danger" text size="small">删除</el-button>
+              </template>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
       </el-table>
+
+      <div class="pager">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="recipes.length"
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="pageSizes"
+        />
+      </div>
     </el-card>
   </div>
 </template>
@@ -53,6 +73,9 @@ export default {
       generating: false,
       adding: false,
       recipes: [],
+      currentPage: 1,
+      pageSize: 10,
+      pageSizes: [5, 10, 20, 50],
       form: {
         date: new Date().toISOString().slice(0,10),
         meal_type: '早餐',
@@ -102,6 +125,22 @@ export default {
       } finally {
         this.adding = false
       }
+    },
+    async deleteRecipe(row) {
+      try {
+        await axios.delete(`/api/health-assistant/recipes/${row.id}`)
+        this.$message.success('已删除')
+        this.fetchRecipes()
+      } catch (e) {
+        this.$message.error('删除失败')
+      }
+    }
+  },
+  computed: {
+    pagedRecipes() {
+      const start = (this.currentPage - 1) * this.pageSize
+      const end = start + this.pageSize
+      return this.recipes.slice(start, end)
     }
   },
   mounted() {
@@ -115,5 +154,6 @@ export default {
 .header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px; }
 .form { margin-bottom: 12px; }
 .table { margin-top: 8px; }
+.pager { margin-top: 12px; display:flex; justify-content:flex-end; }
 .card { background: #fff; }
 </style>
