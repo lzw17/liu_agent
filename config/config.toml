@@ -8,11 +8,11 @@ debug = false
 cors_origins = ["*"]
 
 # LLM Configuration - Primary model
-[llm]
+[llm.qwen-plus]
 provider = "openai"  # Options: openai, anthropic, azure, ollama, local
-model = "gpt-4"
-api_key = "your-api-key-here"
-base_url = "https://api.openai.com/v1"
+model = "qwen-plus"
+api_key = "sk-8979f7d3d763451f97ccf1d682f50ead"
+base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 max_tokens = 4096
 temperature = 0.7
 timeout = 30
@@ -23,30 +23,6 @@ provider = "deepseek"
 model = "deepseek-chat"
 api_key = "sk-f7340cd6857a494a9cd7da5863d85da6"
 base_url = "https://api.deepseek.com/v1"
-max_tokens = 4096
-temperature = 0.7
-
-[llm.anthropic]
-provider = "anthropic"
-model = "claude-3-sonnet-20240229"
-api_key = "your-anthropic-key"
-base_url = "https://api.anthropic.com/v1"
-max_tokens = 4096
-temperature = 0.7
-
-[llm.azure]
-provider = "azure"
-model = "gpt-4"
-api_key = "your-azure-key"
-base_url = "https://your-resource.openai.azure.com"
-api_version = "2024-02-01"
-deployment_name = "gpt-4"
-
-[llm.ollama]
-provider = "ollama"
-model = "llama2"
-base_url = "http://localhost:11434/v1"
-api_key = "ollama"
 max_tokens = 4096
 temperature = 0.7
 
